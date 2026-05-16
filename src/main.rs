@@ -11,8 +11,9 @@ mod path;
 mod constants;
 mod misc;
 
-use std::{thread, time};
+use std::time::Duration;
 use bevy::prelude::*;
+use bevy::winit::{WinitSettings, UpdateMode};
 use bevy::render::settings::{Backends, WgpuSettings, RenderCreation};
 use bevy::render::RenderPlugin;
 use ghost::{
@@ -44,8 +45,9 @@ use path::Path;
 
 fn main() {
     let board = Board::new(constants::BOARD_CELL_SIZE, constants::BOARD_OFFSET);
-    let window_width = board.width() as f32 * board.cell_size();
-    let window_height = board.height() as f32 * board.cell_size() + 32.;
+    let scale = 0.8;
+    let window_width = (board.width() as f32 * board.cell_size()) * scale;
+    let window_height = (board.height() as f32 * board.cell_size() + 32.) * scale;
 
     App::new()
         // Plugins
@@ -55,6 +57,10 @@ fn main() {
                     title: "Disc-Golf-Man".to_string(),
                     resolution: (window_width, window_height).into(),
                     resizable: false,
+                    enabled_buttons: bevy::window::EnabledButtons {
+                        maximize: false,
+                        ..default()
+                    },
                     ..default()
                 }),
                 ..default()
@@ -69,6 +75,10 @@ fn main() {
         )
 
         // Resources
+        .insert_resource(WinitSettings {
+            focused_mode: UpdateMode::reactive_low_power(Duration::from_secs_f64(1. / constants::MAX_FRAMERATE)),
+            unfocused_mode: UpdateMode::reactive_low_power(Duration::from_secs_f64(1. / constants::MAX_FRAMERATE)),
+        })
         .insert_resource(ClearColor(Color::srgb(0., 0., 0.)))
         .insert_resource(board)
         .init_resource::<PointValues>()
@@ -107,7 +117,6 @@ fn main() {
             win_system,
             ghost_release_system,
             ghost_respawn_system.after(tj_ghost_collision_system),
-            throttle_framerate_system,
         ).run_if(in_state(GameState::Default)))
 
         // Game end
@@ -126,6 +135,7 @@ fn main() {
             reset_sakshi_system,
             reset_dots_and_power_ups_system,
             reset_ghost_release_timer,
+            reset_background_music,
             reset_end_message_text,
             restart_game_system,
         ).chain())
@@ -150,6 +160,13 @@ fn setup(
     // Camera
     commands.spawn((
         Camera2d,
+        OrthographicProjection {
+            scaling_mode: bevy::render::camera::ScalingMode::Fixed {
+                width: board.width() as f32 * board.cell_size(),
+                height: board.height() as f32 * board.cell_size() + 32.,
+            },
+            ..OrthographicProjection::default_2d()
+        },
         Transform::from_translation(Vec3::new(
             board.width() as f32 * board.cell_size() / 2.,
             board.height() as f32 * board.cell_size() / 2.,
@@ -172,11 +189,11 @@ fn setup(
 
     // Dots and power-ups
     let dot_material = DotMaterial {
-        handle: asset_server.load("cookie.png")
+        handle: asset_server.load("disc.png")
     };
     let power_up_materials = PowerUpMaterials {
-        material_1: asset_server.load("arizona_1.png"),
-        material_2: asset_server.load("arizona_2.png"),
+        material_1: asset_server.load("basket.png"),
+        material_2: asset_server.load("basket.png"),
     };
     utils::init_dots_and_power_ups(&mut commands, &board, dot_material.handle.clone(), power_up_materials.material_1.clone());
     commands.insert_resource(dot_material);
@@ -184,11 +201,14 @@ fn setup(
 
     // TJ
     let tj_materials = TJMaterials {
-        tj_default: asset_server.load("ben/ben.png"),
-        tj_up: asset_server.load("ben/ben_up.png"),
-        tj_right: asset_server.load("ben/ben_right.png"),
-        tj_down: asset_server.load("ben/ben_down.png"),
-        tj_left: asset_server.load("ben/ben_left.png"),
+        tj_up: asset_server.load("tj/tj_up.png"),
+        tj_right: asset_server.load("tj/tj_right.png"),
+        tj_down: asset_server.load("tj/tj_down.png"),
+        tj_left: asset_server.load("tj/tj_left.png"),
+        tj_closed_up: asset_server.load("tj/tj_closed_up.png"),
+        tj_closed_right: asset_server.load("tj/tj_closed_right.png"),
+        tj_closed_down: asset_server.load("tj/tj_closed_down.png"),
+        tj_closed_left: asset_server.load("tj/tj_closed_left.png"),
     };
     let (tj_init_x, tj_init_y) = utils::get_tj_spawn_coordinates(&board);
     commands.spawn((
@@ -198,7 +218,7 @@ fn setup(
         TJSpeed::default(),
         TJNextDirection::default(),
         Sprite {
-            image: tj_materials.tj_default.clone(),
+            image: tj_materials.tj_closed_right.clone(),
             custom_size: Some(Vec2::new(board.cell_size(), board.cell_size())),
             ..default()
         },
@@ -208,8 +228,8 @@ fn setup(
 
     // Sean
     let sean_materials = SeanMaterials {
-        default_material: asset_server.load("ghosts/caleb.png"),
-        scared_material: asset_server.load("ghosts/caleb_scared.png"),
+        default_material: asset_server.load("ghosts/sean.png"),
+        scared_material: asset_server.load("ghosts/sean_scared.png"),
     };
     let (sean_init_x, sean_init_y) = utils::get_sean_spawn_coordinates(&board);
     commands.spawn((
@@ -230,8 +250,8 @@ fn setup(
 
     // Julie
     let julie_materials = JulieMaterials {
-        default_material: asset_server.load("ghosts/sam_h.png"),
-        scared_material: asset_server.load("ghosts/sam_h_scared.png"),
+        default_material: asset_server.load("ghosts/julie.png"),
+        scared_material: asset_server.load("ghosts/julie_scared.png"),
     };
     let (julie_init_x, julie_init_y) = utils::get_julie_spawn_coordinates(&board);
     commands.spawn((
@@ -274,8 +294,8 @@ fn setup(
 
     // Sakshi
     let sakshi_materials = SakshiMaterials {
-        default_material: asset_server.load("ghosts/samson.png"),
-        scared_material: asset_server.load("ghosts/samson_scared.png"),
+        default_material: asset_server.load("ghosts/sakshi.png"),
+        scared_material: asset_server.load("ghosts/sakshi_scared.png"),
     };
     let (sakshi_init_x, sakshi_init_y) = utils::get_sakshi_spawn_coordinates(&board);
     commands.spawn((
@@ -317,14 +337,14 @@ fn setup(
 
     // Sounds
     commands.insert_resource(misc::SoundMaterials {
-        background_sound: asset_server.load("sounds/guts_theme.mp3"),
-        slurp_sound: asset_server.load("sounds/slurp.mp3"),
-        tj_death_sound: asset_server.load("sounds/cringe.mp3"),
-        ghost_death_sound: asset_server.load("sounds/fuck.mp3")
+        background_sound: asset_server.load("sounds/battle.mp3"),
+        slurp_sound: asset_server.load("sounds/rattling_chains.mp3"),
+        tj_death_sound: asset_server.load("sounds/its_delicious.mp3"),
+        ghost_death_sound: asset_server.load("sounds/evil_laugh.mp3")
     });
 
     // Background music timer
-    commands.insert_resource(misc::BackgroundMusicTimer(Timer::from_seconds(215., TimerMode::Once)));
+    commands.insert_resource(misc::BackgroundMusicTimer(Timer::from_seconds(87., TimerMode::Once)));
 }
 
 fn wait_for_game_start(
@@ -450,8 +470,9 @@ fn tj_animation_system(
         return;
     }
 
-    if sprite.image != tj_materials.tj_default {
-        sprite.image = tj_materials.tj_default.clone();
+    let closed_image = utils::get_tj_closed_image(tj_direction.0, &tj_materials);
+    if sprite.image != closed_image {
+        sprite.image = closed_image;
     } else {
         utils::update_tj_sprite(&mut sprite, tj_direction.0, &tj_materials);
     }
@@ -509,6 +530,7 @@ fn tj_ghost_collision_system(
     tj_query: Query<&Transform, With<TJ>>,
     mut ghost_query: Query<(&Transform, &AttackState, &mut ReleaseState, &mut GhostPath), With<Ghost>>,
     mut score_query: Query<&mut Score>,
+    music_query: Query<Entity, With<misc::BackgroundMusic>>,
     mut ghost_chain: ResMut<GhostChain>,
     mut end_message_text: ResMut<EndMessageText>,
     board: Res<Board>,
@@ -524,6 +546,9 @@ fn tj_ghost_collision_system(
                 AttackState::Attacking => {
                     next_state.set(GameState::End);
                     end_message_text.0 = "Diagnosis: Skill Issue".to_string();
+                    for entity in music_query.iter() {
+                        commands.entity(entity).despawn();
+                    }
                     commands.spawn(AudioPlayer::new(sound_materials.tj_death_sound.clone()));
                 },
                 AttackState::Scared => {
@@ -796,7 +821,7 @@ fn background_music_system(
 ) {
     let timer = &mut background_music_timer.0;
     if timer.elapsed_secs() == 0. {
-        commands.spawn(AudioPlayer::new(sound_materials.background_sound.clone()));
+        commands.spawn((AudioPlayer::new(sound_materials.background_sound.clone()), misc::BackgroundMusic));
     }
 
     timer.tick(time.delta());
@@ -824,7 +849,7 @@ fn reset_tj_system(
 
     tj_direction.0 = constants::TJ_DIRECTION_DEFAULT;
 
-    sprite.image = tj_materials.tj_default.clone();
+    sprite.image = tj_materials.tj_closed_right.clone();
 }
 
 fn reset_sean_system(
@@ -928,6 +953,12 @@ fn reset_ghost_release_timer(
     ghost_release_timer.0.reset();
 }
 
+fn reset_background_music(
+    mut background_music_timer: ResMut<misc::BackgroundMusicTimer>,
+) {
+    background_music_timer.0 = Timer::from_seconds(87., TimerMode::Once);
+}
+
 fn reset_end_message_text(
     mut commands: Commands,
     query: Query<Entity, With<misc::EndMessage>>
@@ -1003,6 +1034,3 @@ fn display_end_message_system(
     }
 }
 
-fn throttle_framerate_system() {
-    thread::sleep(time::Duration::from_secs_f64(1./constants::MAX_FRAMERATE));
-}

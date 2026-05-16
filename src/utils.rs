@@ -152,3 +152,15 @@ pub fn update_tj_sprite(
         Direction::Left => tj_materials.tj_left.clone(),
     };
 }
+
+pub fn get_tj_closed_image(
+    direction: Direction,
+    tj_materials: &TJMaterials
+) -> Handle<Image> {
+    match direction {
+        Direction::Up => tj_materials.tj_closed_up.clone(),
+        Direction::Right => tj_materials.tj_closed_right.clone(),
+        Direction::Down => tj_materials.tj_closed_down.clone(),
+        Direction::Left => tj_materials.tj_closed_left.clone(),
+    }
+}

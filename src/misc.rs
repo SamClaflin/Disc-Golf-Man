@@ -8,6 +8,9 @@ pub struct SoundMaterials {
     pub ghost_death_sound: Handle<AudioSource>
 }
 
+#[derive(Component)]
+pub struct BackgroundMusic;
+
 #[derive(Resource)]
 pub struct BackgroundMusicTimer(pub Timer);
 

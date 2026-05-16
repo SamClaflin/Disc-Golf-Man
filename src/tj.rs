@@ -19,11 +19,14 @@ pub struct TJNextDirection(pub Option<Direction>);
 
 #[derive(Resource)]
 pub struct TJMaterials {
-    pub tj_default: Handle<Image>,
     pub tj_up: Handle<Image>,
     pub tj_right: Handle<Image>,
     pub tj_down: Handle<Image>,
     pub tj_left: Handle<Image>,
+    pub tj_closed_up: Handle<Image>,
+    pub tj_closed_right: Handle<Image>,
+    pub tj_closed_down: Handle<Image>,
+    pub tj_closed_left: Handle<Image>,
 }
 
 impl Default for TJ {
