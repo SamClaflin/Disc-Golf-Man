@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 mod board;
 mod tj;
 mod enums;

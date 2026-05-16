@@ -1,5 +1,6 @@
-/target
+target
+dist
 .vscode
 notes
 CLAUDE.md
-settings.local.json
+.claude
