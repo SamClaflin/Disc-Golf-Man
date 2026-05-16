@@ -119,6 +119,7 @@ fn main() {
             win_system,
             ghost_release_system,
             ghost_respawn_system.after(tj_ghost_collision_system),
+            dev_win_system,
         ).run_if(in_state(GameState::Default)))
 
         // Game end
@@ -722,6 +723,25 @@ fn win_system(
     }
 }
 
+fn dev_win_system(
+    mut commands: Commands,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    dot_query: Query<Entity, With<Dot>>,
+    power_up_query: Query<Entity, With<PowerUp>>,
+) {
+    if !constants::DEV_MODE {
+        return;
+    }
+    if keyboard_input.just_pressed(KeyCode::F1) {
+        for entity in dot_query.iter() {
+            commands.entity(entity).despawn();
+        }
+        for entity in power_up_query.iter() {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
 fn ghost_release_system(
     mut ghost_release_timer: ResMut<GhostReleaseTimer>,
     mut query: Query<(&mut ReleaseState, &mut Transform, &GhostSpeed), With<Ghost>>,
@@ -957,7 +977,12 @@ fn reset_ghost_release_timer(
 
 fn reset_background_music(
     mut background_music_timer: ResMut<misc::BackgroundMusicTimer>,
+    music_query: Query<Entity, With<misc::BackgroundMusic>>,
+    mut commands: Commands,
 ) {
+    for entity in music_query.iter() {
+        commands.entity(entity).despawn();
+    }
     background_music_timer.0 = Timer::from_seconds(87., TimerMode::Once);
 }
 

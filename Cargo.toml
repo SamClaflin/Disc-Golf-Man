@@ -3,6 +3,10 @@ name = "disc_golf_man"
 version = "1.0.0"
 edition = "2024"
 
+[[bin]]
+name = "Disc-Golf-Man"
+path = "src/main.rs"
+
 [dependencies]
 bevy = { version = "0.15", features = ["mp3"] }
 rand = "0.8"

@@ -11,7 +11,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     mkdir -p "$APP/Contents/MacOS"
     mkdir -p "$APP/Contents/Resources"
 
-    cp target/release/disc_golf_man "$APP/Contents/MacOS/"
+    cp target/release/Disc-Golf-Man "$APP/Contents/MacOS/"
     cp -r assets "$APP/Contents/MacOS/assets"
 
     # Convert icon to icns if sips is available
@@ -41,7 +41,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     <key>CFBundleIdentifier</key>
     <string>com.discgolfman.app</string>
     <key>CFBundleExecutable</key>
-    <string>disc_golf_man</string>
+    <string>Disc-Golf-Man</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundlePackageType</key>
@@ -57,9 +57,9 @@ PLIST
     echo ""
     echo "Build complete: $APP"
 else
-    cp target/release/disc_golf_man dist/
+    cp target/release/Disc-Golf-Man dist/
     cp -r assets dist/assets
 
     echo ""
-    echo "Build complete: dist/disc_golf_man"
+    echo "Build complete: dist/Disc-Golf-Man"
 fi
