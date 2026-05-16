@@ -1,5 +1,5 @@
 mod board;
-mod ben;
+mod tj;
 mod enums;
 mod dot;
 mod ghost;
@@ -21,24 +21,24 @@ use ghost::{
     AttackState,
     ReleaseState,
     GhostSpeed,
-    Caleb,
-    CalebMaterials,
-    Harris,
-    HarrisMaterials,
+    Sean,
+    SeanMaterials,
+    Julie,
+    JulieMaterials,
     Claflin,
     ClaflinMaterials,
-    Samson,
-    SamsonMaterials,
+    Sakshi,
+    SakshiMaterials,
     GhostScareTimer,
     GhostReleaseTimer,
     GhostChain
 };
 use board::Board;
-use ben::{Ben, BenAnimationTimer, BenSpeed, BenDirection, BenNextDirection, BenMaterials};
+use tj::{TJ, TJAnimationTimer, TJSpeed, TJDirection, TJNextDirection, TJMaterials};
 use enums::{Direction, GameState, CollisionType};
 use dot::{Dot, DotMaterial};
 use score::{Score, PointValues};
-use events::{BenDirectionChangedEvent, PowerUpConsumedEvent};
+use events::{TJDirectionChangedEvent, PowerUpConsumedEvent};
 use power_up::{PowerUp, PowerUpMaterials, PowerUpAnimationTimer};
 use path::Path;
 
@@ -52,7 +52,7 @@ fn main() {
         .add_plugins(DefaultPlugins
             .set(WindowPlugin {
                 primary_window: Some(Window {
-                    title: "Benja-Man".to_string(),
+                    title: "Disc-Golf-Man".to_string(),
                     resolution: (window_width, window_height).into(),
                     resizable: false,
                     ..default()
@@ -78,7 +78,7 @@ fn main() {
         .init_resource::<EndMessageText>()
 
         // Events
-        .add_event::<BenDirectionChangedEvent>()
+        .add_event::<TJDirectionChangedEvent>()
         .add_event::<PowerUpConsumedEvent>()
 
         // State
@@ -92,21 +92,21 @@ fn main() {
 
         // Mainloop (Default state)
         .add_systems(Update, (
-            ben_controller_system,
-            ben_movement_system.after(ben_controller_system),
-            ben_dot_collision_system.after(ben_movement_system),
-            ben_power_up_collision_system.after(ben_movement_system),
-            ben_ghost_collision_system.after(ben_movement_system),
-            ben_animation_system,
+            tj_controller_system,
+            tj_movement_system.after(tj_controller_system),
+            tj_dot_collision_system.after(tj_movement_system),
+            tj_power_up_collision_system.after(tj_movement_system),
+            tj_ghost_collision_system.after(tj_movement_system),
+            tj_animation_system,
             scare_ghosts_system,
             ghost_movement_system,
-            caleb_animation_system,
-            harris_animation_system,
+            sean_animation_system,
+            julie_animation_system,
             claflin_animation_system,
-            samson_animation_system,
+            sakshi_animation_system,
             win_system,
             ghost_release_system,
-            ghost_respawn_system.after(ben_ghost_collision_system),
+            ghost_respawn_system.after(tj_ghost_collision_system),
             throttle_framerate_system,
         ).run_if(in_state(GameState::Default)))
 
@@ -119,11 +119,11 @@ fn main() {
         // Reset state
         .add_systems(OnEnter(GameState::Reset), (
             reset_score_system,
-            reset_ben_system,
-            reset_caleb_system,
-            reset_harris_system,
+            reset_tj_system,
+            reset_sean_system,
+            reset_julie_system,
             reset_claflin_system,
-            reset_samson_system,
+            reset_sakshi_system,
             reset_dots_and_power_ups_system,
             reset_ghost_release_timer,
             reset_end_message_text,
@@ -182,74 +182,73 @@ fn setup(
     commands.insert_resource(dot_material);
     commands.insert_resource(power_up_materials);
 
-    // Ben
-    let ben_materials = BenMaterials {
-        ben_default: asset_server.load("ben/ben.png"),
-        ben_up: asset_server.load("ben/ben_up.png"),
-        ben_right: asset_server.load("ben/ben_right.png"),
-        ben_down: asset_server.load("ben/ben_down.png"),
-        ben_left: asset_server.load("ben/ben_left.png"),
+    // TJ
+    let tj_materials = TJMaterials {
+        tj_default: asset_server.load("ben/ben.png"),
+        tj_up: asset_server.load("ben/ben_up.png"),
+        tj_right: asset_server.load("ben/ben_right.png"),
+        tj_down: asset_server.load("ben/ben_down.png"),
+        tj_left: asset_server.load("ben/ben_left.png"),
     };
-    let (ben_init_x, ben_init_y) = utils::get_ben_spawn_coordinates(&board);
+    let (tj_init_x, tj_init_y) = utils::get_tj_spawn_coordinates(&board);
     commands.spawn((
-        Ben,
-        ben::BenLives::default(),
-        BenDirection::default(),
-        BenAnimationTimer::default(),
-        BenSpeed::default(),
-        BenNextDirection::default(),
+        TJ,
+        TJDirection::default(),
+        TJAnimationTimer::default(),
+        TJSpeed::default(),
+        TJNextDirection::default(),
         Sprite {
-            image: ben_materials.ben_default.clone(),
+            image: tj_materials.tj_default.clone(),
             custom_size: Some(Vec2::new(board.cell_size(), board.cell_size())),
             ..default()
         },
-        Transform::from_translation(Vec3::new(ben_init_x, ben_init_y, 10.)),
+        Transform::from_translation(Vec3::new(tj_init_x, tj_init_y, 10.)),
     ));
-    commands.insert_resource(ben_materials);
+    commands.insert_resource(tj_materials);
 
-    // Caleb
-    let caleb_materials = CalebMaterials {
+    // Sean
+    let sean_materials = SeanMaterials {
         default_material: asset_server.load("ghosts/caleb.png"),
         scared_material: asset_server.load("ghosts/caleb_scared.png"),
     };
-    let (caleb_init_x, caleb_init_y) = utils::get_caleb_spawn_coordinates(&board);
+    let (sean_init_x, sean_init_y) = utils::get_sean_spawn_coordinates(&board);
     commands.spawn((
         Ghost,
-        Caleb,
+        Sean,
         AttackState::Attacking,
         ReleaseState::Released,
         GhostPath::default(),
         GhostSpeed::default(),
         Sprite {
-            image: caleb_materials.default_material.clone(),
+            image: sean_materials.default_material.clone(),
             custom_size: Some(Vec2::new(board.cell_size(), board.cell_size())),
             ..default()
         },
-        Transform::from_translation(Vec3::new(caleb_init_x, caleb_init_y, 9.)),
+        Transform::from_translation(Vec3::new(sean_init_x, sean_init_y, 9.)),
     ));
-    commands.insert_resource(caleb_materials);
+    commands.insert_resource(sean_materials);
 
-    // Harris
-    let harris_materials = HarrisMaterials {
+    // Julie
+    let julie_materials = JulieMaterials {
         default_material: asset_server.load("ghosts/sam_h.png"),
         scared_material: asset_server.load("ghosts/sam_h_scared.png"),
     };
-    let (harris_init_x, harris_init_y) = utils::get_harris_spawn_coordinates(&board);
+    let (julie_init_x, julie_init_y) = utils::get_julie_spawn_coordinates(&board);
     commands.spawn((
         Ghost,
-        Harris,
+        Julie,
         AttackState::Attacking,
         ReleaseState::Caged,
         GhostPath::default(),
         GhostSpeed::default(),
         Sprite {
-            image: harris_materials.default_material.clone(),
+            image: julie_materials.default_material.clone(),
             custom_size: Some(Vec2::new(board.cell_size(), board.cell_size())),
             ..default()
         },
-        Transform::from_translation(Vec3::new(harris_init_x, harris_init_y, 9.)),
+        Transform::from_translation(Vec3::new(julie_init_x, julie_init_y, 9.)),
     ));
-    commands.insert_resource(harris_materials);
+    commands.insert_resource(julie_materials);
 
     // Claflin
     let claflin_materials = ClaflinMaterials {
@@ -273,27 +272,27 @@ fn setup(
     ));
     commands.insert_resource(claflin_materials);
 
-    // Samson
-    let samson_materials = SamsonMaterials {
+    // Sakshi
+    let sakshi_materials = SakshiMaterials {
         default_material: asset_server.load("ghosts/samson.png"),
         scared_material: asset_server.load("ghosts/samson_scared.png"),
     };
-    let (samson_init_x, samson_init_y) = utils::get_samson_spawn_coordinates(&board);
+    let (sakshi_init_x, sakshi_init_y) = utils::get_sakshi_spawn_coordinates(&board);
     commands.spawn((
         Ghost,
-        Samson,
+        Sakshi,
         AttackState::Attacking,
         ReleaseState::Caged,
         GhostPath::default(),
         GhostSpeed::default(),
         Sprite {
-            image: samson_materials.default_material.clone(),
+            image: sakshi_materials.default_material.clone(),
             custom_size: Some(Vec2::new(board.cell_size(), board.cell_size())),
             ..default()
         },
-        Transform::from_translation(Vec3::new(samson_init_x, samson_init_y, 9.)),
+        Transform::from_translation(Vec3::new(sakshi_init_x, sakshi_init_y, 9.)),
     ));
-    commands.insert_resource(samson_materials);
+    commands.insert_resource(sakshi_materials);
 
     // Score
     let font_material = misc::FontMaterial {
@@ -320,7 +319,7 @@ fn setup(
     commands.insert_resource(misc::SoundMaterials {
         background_sound: asset_server.load("sounds/guts_theme.mp3"),
         slurp_sound: asset_server.load("sounds/slurp.mp3"),
-        ben_death_sound: asset_server.load("sounds/cringe.mp3"),
+        tj_death_sound: asset_server.load("sounds/cringe.mp3"),
         ghost_death_sound: asset_server.load("sounds/fuck.mp3")
     });
 
@@ -361,67 +360,67 @@ fn wait_for_game_start(
     }
 }
 
-fn ben_controller_system(
-    mut query: Query<&mut BenNextDirection, With<Ben>>,
+fn tj_controller_system(
+    mut query: Query<&mut TJNextDirection, With<TJ>>,
     keys: Res<ButtonInput<KeyCode>>
 ) {
-    let mut ben_next_direction = query.single_mut();
+    let mut tj_next_direction = query.single_mut();
     if keys.just_pressed(KeyCode::KeyW) || keys.just_pressed(KeyCode::ArrowUp) {
-        ben_next_direction.0 = Some(Direction::Up);
+        tj_next_direction.0 = Some(Direction::Up);
     } else if keys.just_pressed(KeyCode::KeyD) || keys.just_pressed(KeyCode::ArrowRight) {
-        ben_next_direction.0 = Some(Direction::Right);
+        tj_next_direction.0 = Some(Direction::Right);
     } else if keys.just_pressed(KeyCode::KeyS) || keys.just_pressed(KeyCode::ArrowDown) {
-        ben_next_direction.0 = Some(Direction::Down);
+        tj_next_direction.0 = Some(Direction::Down);
     } else if keys.just_pressed(KeyCode::KeyA) || keys.just_pressed(KeyCode::ArrowLeft) {
-        ben_next_direction.0 = Some(Direction::Left);
+        tj_next_direction.0 = Some(Direction::Left);
     }
 }
 
-fn ben_movement_system(
-    mut query: Query<(&mut Transform, &mut BenNextDirection, &mut BenDirection, &BenSpeed), With<Ben>>,
-    mut direction_changed_event: EventWriter<BenDirectionChangedEvent>,
+fn tj_movement_system(
+    mut query: Query<(&mut Transform, &mut TJNextDirection, &mut TJDirection, &TJSpeed), With<TJ>>,
+    mut direction_changed_event: EventWriter<TJDirectionChangedEvent>,
     board: Res<Board>
 ) {
-    let (mut transform, mut ben_next_direction, mut ben_direction, ben_speed) = query.single_mut();
-    let speed = ben_speed.0;
+    let (mut transform, mut tj_next_direction, mut tj_direction, tj_speed) = query.single_mut();
+    let speed = tj_speed.0;
     let can_move_up = utils::can_move_up(&transform, &board, speed);
     let can_move_right = utils::can_move_right(&transform, &board, speed);
     let can_move_down = utils::can_move_down(&transform, &board, speed);
     let can_move_left = utils::can_move_left(&transform, &board, speed);
 
-    let next_direction = ben_next_direction.0;
+    let next_direction = tj_next_direction.0;
     if next_direction.is_some() {
-        let initial_direction = ben_direction.0;
+        let initial_direction = tj_direction.0;
         match next_direction.unwrap() {
             Direction::Up => {
                 if can_move_up {
-                    ben_direction.0 = Direction::Up;
+                    tj_direction.0 = Direction::Up;
                 }
             },
             Direction::Right => {
                 if can_move_right {
-                    ben_direction.0 = Direction::Right;
+                    tj_direction.0 = Direction::Right;
                 }
             },
             Direction::Down => {
                 if can_move_down {
-                    ben_direction.0 = Direction::Down;
+                    tj_direction.0 = Direction::Down;
                 }
             },
             Direction::Left => {
                 if can_move_left {
-                    ben_direction.0 = Direction::Left;
+                    tj_direction.0 = Direction::Left;
                 }
             },
         }
 
-        if ben_direction.0 != initial_direction {
-            direction_changed_event.send(BenDirectionChangedEvent(ben_direction.0));
-            ben_next_direction.0 = None;
+        if tj_direction.0 != initial_direction {
+            direction_changed_event.send(TJDirectionChangedEvent(tj_direction.0));
+            tj_next_direction.0 = None;
         }
     }
 
-    let direction = ben_direction.0;
+    let direction = tj_direction.0;
     let (target_x, target_y) = board.get_coordinates(transform.translation.x, transform.translation.y, direction, speed);
     if can_move_up && direction == Direction::Up
     || can_move_right && direction == Direction::Right
@@ -432,44 +431,44 @@ fn ben_movement_system(
     }
 }
 
-fn ben_animation_system(
-    mut query: Query<(&mut Sprite, &mut BenAnimationTimer, &BenDirection), With<Ben>>,
-    mut event_direction_changed: EventReader<BenDirectionChangedEvent>,
+fn tj_animation_system(
+    mut query: Query<(&mut Sprite, &mut TJAnimationTimer, &TJDirection), With<TJ>>,
+    mut event_direction_changed: EventReader<TJDirectionChangedEvent>,
     time: Res<Time>,
-    ben_materials: Res<BenMaterials>
+    tj_materials: Res<TJMaterials>
 ) {
-    let (mut sprite, mut ben_animation_timer, ben_direction) = query.single_mut();
+    let (mut sprite, mut tj_animation_timer, tj_direction) = query.single_mut();
 
     for event in event_direction_changed.read() {
-        utils::update_ben_sprite(&mut sprite, event.0, &ben_materials);
+        utils::update_tj_sprite(&mut sprite, event.0, &tj_materials);
         return;
     }
 
-    let timer = &mut ben_animation_timer.0;
+    let timer = &mut tj_animation_timer.0;
     timer.tick(time.delta());
     if !timer.finished() {
         return;
     }
 
-    if sprite.image != ben_materials.ben_default {
-        sprite.image = ben_materials.ben_default.clone();
+    if sprite.image != tj_materials.tj_default {
+        sprite.image = tj_materials.tj_default.clone();
     } else {
-        utils::update_ben_sprite(&mut sprite, ben_direction.0, &ben_materials);
+        utils::update_tj_sprite(&mut sprite, tj_direction.0, &tj_materials);
     }
 }
 
-fn ben_dot_collision_system(
+fn tj_dot_collision_system(
     mut commands: Commands,
-    ben_query: Query<&Transform, With<Ben>>,
+    tj_query: Query<&Transform, With<TJ>>,
     dot_query: Query<(Entity, &Transform), With<Dot>>,
     mut score_query: Query<&mut Score>,
     board: Res<Board>,
     point_values: Res<PointValues>,
 ) {
-    let ben_transform = ben_query.single();
-    if utils::is_centered_horizontally(ben_transform, &board) && utils::is_centered_vertically(ben_transform, &board) {
+    let tj_transform = tj_query.single();
+    if utils::is_centered_horizontally(tj_transform, &board) && utils::is_centered_vertically(tj_transform, &board) {
         for (dot_entity, dot_transform) in dot_query.iter() {
-            if dot_transform.translation.x == ben_transform.translation.x && dot_transform.translation.y == ben_transform.translation.y {
+            if dot_transform.translation.x == tj_transform.translation.x && dot_transform.translation.y == tj_transform.translation.y {
                 commands.entity(dot_entity).despawn();
                 score_query.single_mut().0 += point_values.dot;
                 break;
@@ -478,9 +477,9 @@ fn ben_dot_collision_system(
     }
 }
 
-fn ben_power_up_collision_system(
+fn tj_power_up_collision_system(
     mut commands: Commands,
-    ben_query: Query<&Transform, With<Ben>>,
+    tj_query: Query<&Transform, With<TJ>>,
     power_up_query: Query<(Entity, &Transform), With<PowerUp>>,
     mut score_query: Query<&mut Score>,
     mut power_up_consumed_event: EventWriter<PowerUpConsumedEvent>,
@@ -490,10 +489,10 @@ fn ben_power_up_collision_system(
     sound_materials: Res<misc::SoundMaterials>,
     mut commands_audio: Commands,
 ) {
-    let ben_transform = ben_query.single();
-    if utils::is_centered_horizontally(ben_transform, &board) && utils::is_centered_vertically(ben_transform, &board) {
+    let tj_transform = tj_query.single();
+    if utils::is_centered_horizontally(tj_transform, &board) && utils::is_centered_vertically(tj_transform, &board) {
         for (power_up_entity, power_up_transform) in power_up_query.iter() {
-            if power_up_transform.translation.x == ben_transform.translation.x && power_up_transform.translation.y == ben_transform.translation.y {
+            if power_up_transform.translation.x == tj_transform.translation.x && power_up_transform.translation.y == tj_transform.translation.y {
                 commands.entity(power_up_entity).despawn();
                 score_query.single_mut().0 += point_values.power_up;
                 ghost_chain.0 = 0;
@@ -505,9 +504,9 @@ fn ben_power_up_collision_system(
     }
 }
 
-fn ben_ghost_collision_system(
+fn tj_ghost_collision_system(
     mut next_state: ResMut<NextState<GameState>>,
-    ben_query: Query<&Transform, With<Ben>>,
+    tj_query: Query<&Transform, With<TJ>>,
     mut ghost_query: Query<(&Transform, &AttackState, &mut ReleaseState, &mut GhostPath), With<Ghost>>,
     mut score_query: Query<&mut Score>,
     mut ghost_chain: ResMut<GhostChain>,
@@ -517,15 +516,15 @@ fn ben_ghost_collision_system(
     sound_materials: Res<misc::SoundMaterials>,
     mut commands: Commands,
 ) {
-    let ben_transform = ben_query.single();
+    let tj_transform = tj_query.single();
     let mut points = 0;
     for (ghost_transform, attack_state, mut release_state, mut ghost_path) in ghost_query.iter_mut() {
-        if utils::did_collide(ghost_transform, ben_transform, &board, CollisionType::Approximate) {
+        if utils::did_collide(ghost_transform, tj_transform, &board, CollisionType::Approximate) {
             match attack_state {
                 AttackState::Attacking => {
                     next_state.set(GameState::End);
-                    end_message_text.0 = "Fat And\nImmeasurably\nCringe".to_string();
-                    commands.spawn(AudioPlayer::new(sound_materials.ben_death_sound.clone()));
+                    end_message_text.0 = "Diagnosis: Skill Issue".to_string();
+                    commands.spawn(AudioPlayer::new(sound_materials.tj_death_sound.clone()));
                 },
                 AttackState::Scared => {
                     if *release_state == ReleaseState::Respawning {
@@ -610,10 +609,10 @@ fn scare_ghosts_system(
 
 fn ghost_movement_system(
     mut ghost_query: Query<(&mut Transform, &mut GhostPath, &GhostSpeed, &ReleaseState), With<Ghost>>,
-    ben_query: Query<&Transform, (With<Ben>, Without<Ghost>)>,
+    tj_query: Query<&Transform, (With<TJ>, Without<Ghost>)>,
     board: Res<Board>,
 ) {
-    let ben_transform = ben_query.single();
+    let tj_transform = tj_query.single();
     for (mut ghost_transform, mut ghost_path, ghost_speed, release_state) in ghost_query.iter_mut() {
         if *release_state != ReleaseState::Released {
             continue;
@@ -625,7 +624,7 @@ fn ghost_movement_system(
         } else {
             ghost_path.0 = Path::shortest_to_transform(
                 &ghost_transform,
-                ben_transform,
+                tj_transform,
                 &board,
                 ghost_speed.0,
                 CollisionType::Approximate
@@ -634,25 +633,25 @@ fn ghost_movement_system(
     }
 }
 
-fn caleb_animation_system(
-    mut query: Query<(&mut Sprite, &AttackState), With<Caleb>>,
-    caleb_materials: Res<CalebMaterials>
+fn sean_animation_system(
+    mut query: Query<(&mut Sprite, &AttackState), With<Sean>>,
+    sean_materials: Res<SeanMaterials>
 ) {
     let (mut sprite, attack_state) = query.single_mut();
     sprite.image = match attack_state {
-        AttackState::Attacking => caleb_materials.default_material.clone(),
-        AttackState::Scared => caleb_materials.scared_material.clone(),
+        AttackState::Attacking => sean_materials.default_material.clone(),
+        AttackState::Scared => sean_materials.scared_material.clone(),
     };
 }
 
-fn harris_animation_system(
-    mut query: Query<(&mut Sprite, &AttackState), With<Harris>>,
-    harris_materials: Res<HarrisMaterials>
+fn julie_animation_system(
+    mut query: Query<(&mut Sprite, &AttackState), With<Julie>>,
+    julie_materials: Res<JulieMaterials>
 ) {
     let (mut sprite, attack_state) = query.single_mut();
     sprite.image = match attack_state {
-        AttackState::Attacking => harris_materials.default_material.clone(),
-        AttackState::Scared => harris_materials.scared_material.clone(),
+        AttackState::Attacking => julie_materials.default_material.clone(),
+        AttackState::Scared => julie_materials.scared_material.clone(),
     };
 }
 
@@ -667,14 +666,14 @@ fn claflin_animation_system(
     };
 }
 
-fn samson_animation_system(
-    mut query: Query<(&mut Sprite, &AttackState), With<Samson>>,
-    samson_materials: Res<SamsonMaterials>
+fn sakshi_animation_system(
+    mut query: Query<(&mut Sprite, &AttackState), With<Sakshi>>,
+    sakshi_materials: Res<SakshiMaterials>
 ) {
     let (mut sprite, attack_state) = query.single_mut();
     sprite.image = match attack_state {
-        AttackState::Attacking => samson_materials.default_material.clone(),
-        AttackState::Scared => samson_materials.scared_material.clone(),
+        AttackState::Attacking => sakshi_materials.default_material.clone(),
+        AttackState::Scared => sakshi_materials.scared_material.clone(),
     };
 }
 
@@ -692,7 +691,7 @@ fn win_system(
 ) {
     if query.is_empty() {
         next_state.set(GameState::End);
-        end_message_text.0 = "Based\nAND\nRed-Pilled".to_string();
+        end_message_text.0 = "You Win! Now, go play\nsome real disc golf.".to_string();
     }
 }
 
@@ -812,30 +811,30 @@ fn reset_score_system(
     query.single_mut().0 = 0;
 }
 
-fn reset_ben_system(
-    mut query: Query<(&mut Transform, &mut BenDirection, &mut Sprite), With<Ben>>,
+fn reset_tj_system(
+    mut query: Query<(&mut Transform, &mut TJDirection, &mut Sprite), With<TJ>>,
     board: Res<Board>,
-    ben_materials: Res<BenMaterials>
+    tj_materials: Res<TJMaterials>
 ) {
-    let (mut transform, mut ben_direction, mut sprite) = query.single_mut();
+    let (mut transform, mut tj_direction, mut sprite) = query.single_mut();
 
-    let (x, y) = utils::get_ben_spawn_coordinates(&board);
+    let (x, y) = utils::get_tj_spawn_coordinates(&board);
     transform.translation.x = x;
     transform.translation.y = y;
 
-    ben_direction.0 = constants::BEN_DIRECTION_DEFAULT;
+    tj_direction.0 = constants::TJ_DIRECTION_DEFAULT;
 
-    sprite.image = ben_materials.ben_default.clone();
+    sprite.image = tj_materials.tj_default.clone();
 }
 
-fn reset_caleb_system(
-    mut query: Query<(&mut Transform, &mut AttackState, &mut ReleaseState, &mut GhostPath, &mut Sprite), With<Caleb>>,
+fn reset_sean_system(
+    mut query: Query<(&mut Transform, &mut AttackState, &mut ReleaseState, &mut GhostPath, &mut Sprite), With<Sean>>,
     board: Res<Board>,
-    caleb_materials: Res<CalebMaterials>
+    sean_materials: Res<SeanMaterials>
 ) {
     let (mut transform, mut attack_state, mut release_state, mut ghost_path, mut sprite) = query.single_mut();
 
-    let (x, y) = utils::get_caleb_spawn_coordinates(&board);
+    let (x, y) = utils::get_sean_spawn_coordinates(&board);
     transform.translation.x = x;
     transform.translation.y = y;
 
@@ -844,17 +843,17 @@ fn reset_caleb_system(
 
     ghost_path.0.clear();
 
-    sprite.image = caleb_materials.default_material.clone();
+    sprite.image = sean_materials.default_material.clone();
 }
 
-fn reset_harris_system(
-    mut query: Query<(&mut Transform, &mut AttackState, &mut ReleaseState, &mut GhostPath, &mut Sprite), With<Harris>>,
+fn reset_julie_system(
+    mut query: Query<(&mut Transform, &mut AttackState, &mut ReleaseState, &mut GhostPath, &mut Sprite), With<Julie>>,
     board: Res<Board>,
-    harris_materials: Res<HarrisMaterials>
+    julie_materials: Res<JulieMaterials>
 ) {
     let (mut transform, mut attack_state, mut release_state, mut ghost_path, mut sprite) = query.single_mut();
 
-    let (x, y) = utils::get_harris_spawn_coordinates(&board);
+    let (x, y) = utils::get_julie_spawn_coordinates(&board);
     transform.translation.x = x;
     transform.translation.y = y;
 
@@ -863,7 +862,7 @@ fn reset_harris_system(
 
     ghost_path.0.clear();
 
-    sprite.image = harris_materials.default_material.clone();
+    sprite.image = julie_materials.default_material.clone();
 }
 
 fn reset_claflin_system(
@@ -885,14 +884,14 @@ fn reset_claflin_system(
     sprite.image = claflin_materials.default_material.clone();
 }
 
-fn reset_samson_system(
-    mut query: Query<(&mut Transform, &mut AttackState, &mut ReleaseState, &mut GhostPath, &mut Sprite), With<Samson>>,
+fn reset_sakshi_system(
+    mut query: Query<(&mut Transform, &mut AttackState, &mut ReleaseState, &mut GhostPath, &mut Sprite), With<Sakshi>>,
     board: Res<Board>,
-    samson_materials: Res<SamsonMaterials>
+    sakshi_materials: Res<SakshiMaterials>
 ) {
     let (mut transform, mut attack_state, mut release_state, mut ghost_path, mut sprite) = query.single_mut();
 
-    let (x, y) = utils::get_samson_spawn_coordinates(&board);
+    let (x, y) = utils::get_sakshi_spawn_coordinates(&board);
     transform.translation.x = x;
     transform.translation.y = y;
 
@@ -901,7 +900,7 @@ fn reset_samson_system(
 
     ghost_path.0.clear();
 
-    sprite.image = samson_materials.default_material.clone();
+    sprite.image = sakshi_materials.default_material.clone();
 }
 
 fn reset_dots_and_power_ups_system(

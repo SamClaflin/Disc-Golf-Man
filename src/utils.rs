@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::ben::BenMaterials;
+use crate::tj::TJMaterials;
 use crate::board::{Board, BoardTile};
 use crate::enums::{CollisionType, Direction};
 use crate::dot::Dot;
@@ -71,19 +71,19 @@ pub fn get_ghost_spawn_coordinates(board: &Board) -> (f32, f32) {
     (x, y)
 }
 
-pub fn get_ben_spawn_coordinates(board: &Board) -> (f32, f32) {
+pub fn get_tj_spawn_coordinates(board: &Board) -> (f32, f32) {
     let x = board.width() as f32 * board.cell_size() / 2.;
     let (_, y) = board.indeces_to_coordinates(23, 0);
     (x, y)
 }
 
-pub fn get_caleb_spawn_coordinates(board: &Board) -> (f32, f32) {
+pub fn get_sean_spawn_coordinates(board: &Board) -> (f32, f32) {
     let x = board.width() as f32 * board.cell_size() / 2.;
     let (_, y) = board.indeces_to_coordinates(11, 0);
     (x, y)
 }
 
-pub fn get_harris_spawn_coordinates(board: &Board) -> (f32, f32) {
+pub fn get_julie_spawn_coordinates(board: &Board) -> (f32, f32) {
     let x = board.cell_size() * board.width() as f32 / 2. - board.cell_size() * 2.;
     let (_, y) = board.indeces_to_coordinates(14, 0);
     (x, y)
@@ -95,7 +95,7 @@ pub fn get_claflin_spawn_coordinates(board: &Board) -> (f32, f32) {
     (x, y)
 }
 
-pub fn get_samson_spawn_coordinates(board: &Board) -> (f32, f32) {
+pub fn get_sakshi_spawn_coordinates(board: &Board) -> (f32, f32) {
     let x = board.cell_size() * board.width() as f32 / 2. + board.cell_size() * 2.;
     let (_, y) = board.indeces_to_coordinates(14, 0);
     (x, y)
@@ -140,15 +140,15 @@ pub fn init_dots_and_power_ups(
     }
 }
 
-pub fn update_ben_sprite(
+pub fn update_tj_sprite(
     sprite: &mut Sprite,
     direction: Direction,
-    ben_materials: &BenMaterials
+    tj_materials: &TJMaterials
 ) {
     sprite.image = match direction {
-        Direction::Up => ben_materials.ben_up.clone(),
-        Direction::Right => ben_materials.ben_right.clone(),
-        Direction::Down => ben_materials.ben_down.clone(),
-        Direction::Left => ben_materials.ben_left.clone(),
+        Direction::Up => tj_materials.tj_up.clone(),
+        Direction::Right => tj_materials.tj_right.clone(),
+        Direction::Down => tj_materials.tj_down.clone(),
+        Direction::Left => tj_materials.tj_left.clone(),
     };
 }

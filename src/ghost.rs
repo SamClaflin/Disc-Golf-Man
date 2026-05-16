@@ -73,19 +73,19 @@ impl Default for ReleaseState {
 }
 
 #[derive(Component)]
-pub struct Caleb;
+pub struct Sean;
 
 #[derive(Resource)]
-pub struct CalebMaterials {
+pub struct SeanMaterials {
     pub default_material: Handle<Image>,
     pub scared_material: Handle<Image>
 }
 
 #[derive(Component)]
-pub struct Harris;
+pub struct Julie;
 
 #[derive(Resource)]
-pub struct HarrisMaterials {
+pub struct JulieMaterials {
     pub default_material: Handle<Image>,
     pub scared_material: Handle<Image>
 }
@@ -100,10 +100,10 @@ pub struct ClaflinMaterials {
 }
 
 #[derive(Component)]
-pub struct Samson;
+pub struct Sakshi;
 
 #[derive(Resource)]
-pub struct SamsonMaterials {
+pub struct SakshiMaterials {
     pub default_material: Handle<Image>,
     pub scared_material: Handle<Image>
 }

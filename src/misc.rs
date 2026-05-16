@@ -4,7 +4,7 @@ use bevy::prelude::*;
 pub struct SoundMaterials {
     pub background_sound: Handle<AudioSource>,
     pub slurp_sound: Handle<AudioSource>,
-    pub ben_death_sound: Handle<AudioSource>,
+    pub tj_death_sound: Handle<AudioSource>,
     pub ghost_death_sound: Handle<AudioSource>
 }
 
