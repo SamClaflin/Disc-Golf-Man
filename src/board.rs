@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use bevy::prelude::*;
 use crate::enums::Direction;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -11,6 +11,7 @@ pub enum BoardTile {
     GhostGate
 }
 
+#[derive(Resource)]
 pub struct Board {
     matrix: Vec<Vec<BoardTile>>,
     cell_size: f32,
@@ -19,6 +20,8 @@ pub struct Board {
 
 impl Board {
     pub fn new(cell_size: f32, offset: f32) -> Self {
+        use std::collections::HashMap;
+
         let key_map = HashMap::from([
             ('_', BoardTile::Empty),
             ('.', BoardTile::Dot),

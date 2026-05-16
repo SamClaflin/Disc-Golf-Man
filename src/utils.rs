@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use crate::ben::BenMaterials;
 use crate::board::{Board, BoardTile};
 use crate::enums::{CollisionType, Direction};
-use crate::dot::DotBundle;
-use crate::power_up::PowerUpBundle;
+use crate::dot::Dot;
+use crate::power_up::{PowerUp, PowerUpAnimationTimer};
 
 pub fn is_centered_horizontally(transform: &Transform, board: &Board) -> bool {
     (transform.translation.x - board.offset()) % board.cell_size() == 0.
@@ -17,8 +17,8 @@ pub fn can_move_up(transform: &Transform, board: &Board, speed: f32) -> bool {
     let new_y = transform.translation.y + speed;
     let (i, j) = board.coordinates_to_indeces(transform.translation.x, new_y);
     let new_tile = board.try_get(i, j);
-    is_centered_horizontally(&transform, &board) 
-        && new_tile.is_some() 
+    is_centered_horizontally(transform, board)
+        && new_tile.is_some()
         && new_tile.unwrap() != BoardTile::Wall
         && new_tile.unwrap() != BoardTile::GhostGate
 }
@@ -27,8 +27,8 @@ pub fn can_move_right(transform: &Transform, board: &Board, speed: f32) -> bool 
     let new_x = transform.translation.x + speed;
     let (i, j) = board.coordinates_to_indeces(new_x - speed + board.cell_size(), transform.translation.y);
     let new_tile = board.try_get(i, j);
-    is_centered_vertically(&transform, &board) 
-        && new_tile.is_some() 
+    is_centered_vertically(transform, board)
+        && new_tile.is_some()
         && new_tile.unwrap() != BoardTile::Wall
         && new_tile.unwrap() != BoardTile::GhostGate
 }
@@ -37,8 +37,8 @@ pub fn can_move_down(transform: &Transform, board: &Board, speed: f32) -> bool {
     let new_y = transform.translation.y - speed;
     let (i, j) = board.coordinates_to_indeces(transform.translation.x, new_y + speed - board.cell_size());
     let new_tile = board.try_get(i, j);
-    is_centered_horizontally(&transform, &board) 
-        && new_tile.is_some() 
+    is_centered_horizontally(transform, board)
+        && new_tile.is_some()
         && new_tile.unwrap() != BoardTile::Wall
         && new_tile.unwrap() != BoardTile::GhostGate
 }
@@ -47,8 +47,8 @@ pub fn can_move_left(transform: &Transform, board: &Board, speed: f32) -> bool {
     let new_x = transform.translation.x - speed;
     let (i, j) = board.coordinates_to_indeces(new_x, transform.translation.y);
     let new_tile = board.try_get(i, j);
-    is_centered_vertically(&transform, &board) 
-        && new_tile.is_some() 
+    is_centered_vertically(transform, board)
+        && new_tile.is_some()
         && new_tile.unwrap() != BoardTile::Wall
         && new_tile.unwrap() != BoardTile::GhostGate
 }
@@ -84,7 +84,6 @@ pub fn get_caleb_spawn_coordinates(board: &Board) -> (f32, f32) {
 }
 
 pub fn get_harris_spawn_coordinates(board: &Board) -> (f32, f32) {
-
     let x = board.cell_size() * board.width() as f32 / 2. - board.cell_size() * 2.;
     let (_, y) = board.indeces_to_coordinates(14, 0);
     (x, y)
@@ -105,40 +104,35 @@ pub fn get_samson_spawn_coordinates(board: &Board) -> (f32, f32) {
 pub fn init_dots_and_power_ups(
     commands: &mut Commands,
     board: &Board,
-    dot_material: Handle<ColorMaterial>,
-    power_up_material: Handle<ColorMaterial>
+    dot_material: Handle<Image>,
+    power_up_material: Handle<Image>
 ) {
     for i in 0..board.height() {
         for j in 0..board.width() {
             let (x, y) = board.indeces_to_coordinates(i, j);
             match board.try_get(i, j).unwrap() {
                 BoardTile::Dot => {
-                    commands.spawn_bundle(DotBundle {
-                        sprite_bundle: SpriteBundle {
-                            material: dot_material.clone(),
-                            transform: Transform {
-                                translation: Vec3::new(x, y, 2.),
-                                scale: Vec3::new(1./12., 1./12., 1.),
-                                ..Default::default()
-                            },
-                            ..Default::default()
+                    commands.spawn((
+                        Dot,
+                        Sprite {
+                            image: dot_material.clone(),
+                            custom_size: Some(Vec2::new(board.cell_size() / 2., board.cell_size() / 2.)),
+                            ..default()
                         },
-                        ..Default::default()
-                    });
+                        Transform::from_translation(Vec3::new(x, y, 2.)),
+                    ));
                 },
                 BoardTile::PowerUp => {
-                    commands.spawn_bundle(PowerUpBundle {
-                        sprite_bundle: SpriteBundle {
-                            material: power_up_material.clone(),
-                            transform: Transform {
-                                translation: Vec3::new(x, y, 2.),
-                                scale: Vec3::new(1./24., 1./24., 1.),
-                                ..Default::default()
-                            },
-                            ..Default::default()
+                    commands.spawn((
+                        PowerUp,
+                        PowerUpAnimationTimer(Timer::from_seconds(1., TimerMode::Repeating)),
+                        Sprite {
+                            image: power_up_material.clone(),
+                            custom_size: Some(Vec2::new(board.cell_size(), board.cell_size())),
+                            ..default()
                         },
-                        ..Default::default()
-                    });
+                        Transform::from_translation(Vec3::new(x, y, 2.)),
+                    ));
                 },
                 _ => continue
             }
@@ -147,13 +141,13 @@ pub fn init_dots_and_power_ups(
 }
 
 pub fn update_ben_sprite(
-    material_handle: &mut Handle<ColorMaterial>,
+    sprite: &mut Sprite,
     direction: Direction,
     ben_materials: &BenMaterials
 ) {
-    *material_handle = match direction {
+    sprite.image = match direction {
         Direction::Up => ben_materials.ben_up.clone(),
-        Direction::Right => ben_materials.ben_right.clone(), 
+        Direction::Right => ben_materials.ben_right.clone(),
         Direction::Down => ben_materials.ben_down.clone(),
         Direction::Left => ben_materials.ben_left.clone(),
     };

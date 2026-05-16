@@ -2,13 +2,13 @@ use bevy::prelude::*;
 use crate::path::Path;
 use crate::constants;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Component)]
 pub enum AttackState {
     Attacking,
     Scared
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Component)]
 pub enum ReleaseState {
     Caged,
     Releasing,
@@ -16,28 +16,34 @@ pub enum ReleaseState {
     Respawning
 }
 
+#[derive(Component)]
 pub struct Ghost;
 
+#[derive(Component)]
 pub struct GhostPath(pub Path);
 
+#[derive(Component)]
 pub struct GhostSpeed(pub f32);
 
+#[derive(Resource)]
 pub struct GhostScareTimer(pub Timer);
 
 impl Default for GhostScareTimer {
     fn default() -> Self {
-        GhostScareTimer(Timer::from_seconds(10., false))
+        GhostScareTimer(Timer::from_seconds(10., TimerMode::Once))
     }
 }
 
+#[derive(Resource)]
 pub struct GhostReleaseTimer(pub Timer);
 
 impl Default for GhostReleaseTimer {
     fn default() -> Self {
-        Self(Timer::from_seconds(5., false))
+        Self(Timer::from_seconds(5., TimerMode::Once))
     }
 }
 
+#[derive(Resource)]
 pub struct GhostChain(pub u8);
 
 impl Default for GhostChain {
@@ -46,123 +52,58 @@ impl Default for GhostChain {
     }
 }
 
-#[derive(Bundle)]
-pub struct GhostBundle {
-    pub ghost: Ghost,
-    pub attack_state: AttackState,
-    pub release_state: ReleaseState,
-    pub path: GhostPath,
-    pub speed: GhostSpeed,
-
-    #[bundle]
-    pub sprite_bundle: SpriteBundle
+impl Default for Ghost {
+    fn default() -> Self { Self }
 }
 
-impl Default for GhostBundle {
-    fn default() -> Self {
-        Self {
-            ghost: Ghost,
-            attack_state: AttackState::Attacking,
-            release_state: ReleaseState::Caged,
-            path: GhostPath(Path::new()),
-            speed: GhostSpeed(constants::GHOST_SPEED_DEFAULT),
-            sprite_bundle: SpriteBundle::default()
-        }
-    }
+impl Default for GhostPath {
+    fn default() -> Self { Self(Path::new()) }
 }
 
+impl Default for GhostSpeed {
+    fn default() -> Self { Self(constants::GHOST_SPEED_DEFAULT) }
+}
+
+impl Default for AttackState {
+    fn default() -> Self { Self::Attacking }
+}
+
+impl Default for ReleaseState {
+    fn default() -> Self { Self::Caged }
+}
+
+#[derive(Component)]
 pub struct Caleb;
 
+#[derive(Resource)]
 pub struct CalebMaterials {
-    pub default_material: Handle<ColorMaterial>,
-    pub scared_material: Handle<ColorMaterial>
+    pub default_material: Handle<Image>,
+    pub scared_material: Handle<Image>
 }
 
-#[derive(Bundle)]
-pub struct CalebBundle {
-    pub caleb: Caleb,
-
-    #[bundle]
-    pub ghost_bundle: GhostBundle
-}
-
-impl Default for CalebBundle {
-    fn default() -> Self {
-        Self {
-            caleb: Caleb,
-            ghost_bundle: GhostBundle::default()
-        }
-    }
-}
-
+#[derive(Component)]
 pub struct Harris;
 
+#[derive(Resource)]
 pub struct HarrisMaterials {
-    pub default_material: Handle<ColorMaterial>,
-    pub scared_material: Handle<ColorMaterial>
+    pub default_material: Handle<Image>,
+    pub scared_material: Handle<Image>
 }
 
-#[derive(Bundle)]
-pub struct HarrisBundle {
-    pub sam: Harris,
-
-    #[bundle]
-    pub ghost_bundle: GhostBundle
-}
-
-impl Default for HarrisBundle {
-    fn default() -> Self {
-        Self {
-            sam: Harris,
-            ghost_bundle: GhostBundle::default()
-        }
-    }
-}
-
+#[derive(Component)]
 pub struct Claflin;
 
+#[derive(Resource)]
 pub struct ClaflinMaterials {
-    pub default_material: Handle<ColorMaterial>,
-    pub scared_material: Handle<ColorMaterial>
+    pub default_material: Handle<Image>,
+    pub scared_material: Handle<Image>
 }
 
-#[derive(Bundle)]
-pub struct ClaflinBundle {
-    pub neyton: Claflin,
-
-    #[bundle]
-    pub ghost_bundle: GhostBundle
-}
-
-impl Default for ClaflinBundle {
-    fn default() -> Self {
-        Self {
-            neyton: Claflin,
-            ghost_bundle: GhostBundle::default()
-        }
-    }
-}
-
+#[derive(Component)]
 pub struct Samson;
 
+#[derive(Resource)]
 pub struct SamsonMaterials {
-    pub default_material: Handle<ColorMaterial>,
-    pub scared_material: Handle<ColorMaterial>
-}
-
-#[derive(Bundle)]
-pub struct SamsonBundle {
-    pub samson: Samson,
-
-    #[bundle]
-    pub ghost_bundle: GhostBundle 
-}
-
-impl Default for SamsonBundle {
-    fn default() -> Self {
-        Self {
-            samson: Samson,
-            ghost_bundle: GhostBundle::default()
-        }
-    }
+    pub default_material: Handle<Image>,
+    pub scared_material: Handle<Image>
 }

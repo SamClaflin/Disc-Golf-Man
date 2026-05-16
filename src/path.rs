@@ -29,18 +29,17 @@ impl Path {
             let down_position = _board.get_coordinates(_initial_transform.translation.x, _initial_transform.translation.y, Direction::Down, _speed);
             let left_position = _board.get_coordinates(_initial_transform.translation.x, _initial_transform.translation.y, Direction::Left, _speed);
 
-
             let mut available_directions: Vec<Direction> = Vec::new();
-            if utils::can_move_up(_initial_transform, &_board, _speed) && !_path.0.contains(&up_position) {
+            if utils::can_move_up(_initial_transform, _board, _speed) && !_path.0.contains(&up_position) {
                 available_directions.push(Direction::Up);
             }
-            if utils::can_move_right(_initial_transform, &_board, _speed) && !_path.0.contains(&right_position) {
+            if utils::can_move_right(_initial_transform, _board, _speed) && !_path.0.contains(&right_position) {
                 available_directions.push(Direction::Right);
             }
-            if utils::can_move_down(_initial_transform, &_board, _speed) && !_path.0.contains(&down_position) {
+            if utils::can_move_down(_initial_transform, _board, _speed) && !_path.0.contains(&down_position) {
                 available_directions.push(Direction::Down);
             }
-            if utils::can_move_left(_initial_transform, &_board, _speed) && !_path.0.contains(&left_position) {
+            if utils::can_move_left(_initial_transform, _board, _speed) && !_path.0.contains(&left_position) {
                 available_directions.push(Direction::Left);
             }
 
@@ -59,10 +58,10 @@ impl Path {
 
                 _path.push_back((_initial_transform.translation.x, _initial_transform.translation.y));
                 shortest_to_transform_helper(
-                    _path, 
-                    _initial_transform, 
-                    _target_transform, 
-                    _board, 
+                    _path,
+                    _initial_transform,
+                    _target_transform,
+                    _board,
                     _speed,
                     _collision_type
                 );
@@ -89,7 +88,6 @@ impl Path {
     }
 
     pub fn shortest_to_ghost_spawn(initial_transform: &Transform, board: &Board, speed: f32) -> Self {
-        // Step 1: Move to directly above the ghost gate
         let (target_x, target_y) = utils::get_ghost_spawn_coordinates(board);
         let (_, temp_y) = board.indeces_to_coordinates(11, 0);
         let mut path = Self::shortest_to_transform(
@@ -103,9 +101,8 @@ impl Path {
             CollisionType::Exact
         );
 
-        // Step 2: Move through the ghost gate
         while path.peek_back().unwrap().0 == target_x && path.peek_back().unwrap().1 > target_y {
-            let (x, y) = path.peek_back().unwrap().clone();
+            let (x, y) = *path.peek_back().unwrap();
             path.push_back((x, y - speed));
         }
 
@@ -125,10 +122,6 @@ impl Path {
     }
 
     pub fn peek_back(&self) -> Option<&(f32, f32)> {
-        if self.0.len() > 0 {
-            self.0.get(self.0.len() - 1)
-        } else {
-            None
-        }
+        self.0.back()
     }
 }

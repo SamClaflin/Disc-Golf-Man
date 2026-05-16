@@ -1,24 +1,15 @@
 use bevy::prelude::*;
 
+#[derive(Component)]
 pub struct Score(pub u64);
 
-#[derive(Bundle)]
-pub struct ScoreBundle {
-    pub score: Score,
-
-    #[bundle]
-    pub text_bundle: Text2dBundle
-}
-
-impl Default for ScoreBundle {
+impl Default for Score {
     fn default() -> Self {
-        Self {
-            score: Score(0),
-            text_bundle: Text2dBundle::default()
-        }
+        Self(0)
     }
 }
 
+#[derive(Resource)]
 pub struct PointValues {
     pub dot: u64,
     pub power_up: u64,
@@ -53,6 +44,6 @@ impl Default for PointValues {
             flagship: 2000,
             bell: 3000,
             key: 5000,
-        } 
+        }
     }
 }

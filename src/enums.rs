@@ -8,18 +8,9 @@ pub enum Direction {
     Left
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, SystemLabel)]
-pub enum Label {
-    BenControllerSystem,
-    BenMovementSystem,
-    BenGhostCollisionSystem,
-    RestartGameSystem,
-    WaitForRestartSystem,
-    ThrottleFramerateSystem
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(States, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum GameState {
+    #[default]
     Wait,
     Default,
     End,
