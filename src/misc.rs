@@ -11,8 +11,6 @@ pub struct SoundMaterials {
 #[derive(Component)]
 pub struct BackgroundMusic;
 
-#[derive(Resource)]
-pub struct BackgroundMusicTimer(pub Timer);
 
 #[derive(Resource)]
 pub struct FontMaterial {

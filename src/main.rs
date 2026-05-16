@@ -16,8 +16,6 @@ mod misc;
 use std::time::Duration;
 use bevy::prelude::*;
 use bevy::winit::{WinitSettings, UpdateMode};
-use bevy::render::settings::{Backends, WgpuSettings, RenderCreation};
-use bevy::render::RenderPlugin;
 use ghost::{
     Ghost,
     GhostPath,
@@ -63,13 +61,6 @@ fn main() {
                         maximize: false,
                         ..default()
                     },
-                    ..default()
-                }),
-                ..default()
-            })
-            .set(RenderPlugin {
-                render_creation: RenderCreation::Automatic(WgpuSettings {
-                    backends: Some(Backends::VULKAN),
                     ..default()
                 }),
                 ..default()
@@ -346,8 +337,6 @@ fn setup(
         ghost_death_sound: asset_server.load("sounds/evil_laugh.mp3")
     });
 
-    // Background music timer
-    commands.insert_resource(misc::BackgroundMusicTimer(Timer::from_seconds(87., TimerMode::Once)));
 }
 
 fn wait_for_game_start(
@@ -521,7 +510,7 @@ fn tj_power_up_collision_system(
                 score_query.single_mut().0 += point_values.power_up;
                 ghost_chain.0 = 0;
                 power_up_consumed_event.send(PowerUpConsumedEvent);
-                commands_audio.spawn(AudioPlayer::new(sound_materials.slurp_sound.clone()));
+                commands_audio.spawn((AudioPlayer::new(sound_materials.slurp_sound.clone()), PlaybackSettings::DESPAWN));
                 break;
             }
         }
@@ -552,7 +541,7 @@ fn tj_ghost_collision_system(
                     for entity in music_query.iter() {
                         commands.entity(entity).despawn();
                     }
-                    commands.spawn(AudioPlayer::new(sound_materials.tj_death_sound.clone()));
+                    commands.spawn((AudioPlayer::new(sound_materials.tj_death_sound.clone()), PlaybackSettings::DESPAWN));
                 },
                 AttackState::Scared => {
                     if *release_state == ReleaseState::Respawning {
@@ -568,7 +557,7 @@ fn tj_ghost_collision_system(
                     };
                     ghost_chain.0 += 1;
                     ghost_path.0.clear();
-                    commands.spawn(AudioPlayer::new(sound_materials.ghost_death_sound.clone()));
+                    commands.spawn((AudioPlayer::new(sound_materials.ghost_death_sound.clone()), PlaybackSettings::DESPAWN));
                 }
             }
         }
@@ -635,28 +624,121 @@ fn scare_ghosts_system(
     }
 }
 
+fn ghost_target(
+    attack_state: &AttackState,
+    ghost_x: f32,
+    ghost_y: f32,
+    tj_x: f32,
+    tj_y: f32,
+    tj_dir: Direction,
+    sean_x: f32,
+    sean_y: f32,
+    is_sean: bool,
+    is_julie: bool,
+    is_claflin: bool,
+    board: &Board,
+) -> (f32, f32) {
+    // All scared ghosts flee: reflect TJ through the ghost's own position.
+    if *attack_state == AttackState::Scared {
+        return (2.0 * ghost_x - tj_x, 2.0 * ghost_y - tj_y);
+    }
+
+    let cell = board.cell_size();
+
+    if is_sean {
+        // Blinky: directly target TJ.
+        (tj_x, tj_y)
+    } else if is_julie {
+        // Pinky: target 4 tiles ahead of TJ's current direction.
+        let ahead = 4.0 * cell;
+        match tj_dir {
+            Direction::Up    => (tj_x, tj_y + ahead),
+            Direction::Right => (tj_x + ahead, tj_y),
+            Direction::Down  => (tj_x, tj_y - ahead),
+            Direction::Left  => (tj_x - ahead, tj_y),
+        }
+    } else if is_claflin {
+        // Clyde: chase like Blinky when more than 8 tiles away; scatter to the
+        // bottom-left corner when within 8 tiles.
+        let dist_tiles = ((ghost_x - tj_x).powi(2) + (ghost_y - tj_y).powi(2)).sqrt() / cell;
+        if dist_tiles > 8.0 {
+            (tj_x, tj_y)
+        } else {
+            board.indeces_to_coordinates(29, 1)
+        }
+    } else {
+        // Inky (Sakshi): pivot point = 2 tiles ahead of TJ; target = 2 * pivot - Sean's position.
+        let ahead = 2.0 * cell;
+        let (pivot_x, pivot_y) = match tj_dir {
+            Direction::Up    => (tj_x, tj_y + ahead),
+            Direction::Right => (tj_x + ahead, tj_y),
+            Direction::Down  => (tj_x, tj_y - ahead),
+            Direction::Left  => (tj_x - ahead, tj_y),
+        };
+        (2.0 * pivot_x - sean_x, 2.0 * pivot_y - sean_y)
+    }
+}
+
 fn ghost_movement_system(
-    mut ghost_query: Query<(&mut Transform, &mut GhostPath, &GhostSpeed, &ReleaseState), With<Ghost>>,
-    tj_query: Query<&Transform, (With<TJ>, Without<Ghost>)>,
+    mut ghost_query: Query<(
+        &mut Transform,
+        &mut GhostPath,
+        &GhostSpeed,
+        &ReleaseState,
+        &AttackState,
+        Option<&Sean>,
+        Option<&Julie>,
+        Option<&Claflin>,
+        Option<&Sakshi>,
+    ), With<Ghost>>,
+    tj_query: Query<(&Transform, &TJDirection), (With<TJ>, Without<Ghost>)>,
     board: Res<Board>,
 ) {
-    let tj_transform = tj_query.single();
-    for (mut ghost_transform, mut ghost_path, ghost_speed, release_state) in ghost_query.iter_mut() {
+    let (tj_transform, tj_direction) = tj_query.single();
+    let tj_x = tj_transform.translation.x;
+    let tj_y = tj_transform.translation.y;
+
+    // Read Sean's current position for Inky's (Sakshi's) targeting calculation.
+    let sean_pos = ghost_query
+        .iter()
+        .find(|(_, _, _, _, _, sean, _, _, _)| sean.is_some())
+        .map(|(t, _, _, _, _, _, _, _, _)| (t.translation.x, t.translation.y))
+        .unwrap_or((tj_x, tj_y));
+
+    for (mut transform, mut ghost_path, ghost_speed, release_state, attack_state, sean, julie, claflin, _sakshi) in
+        ghost_query.iter_mut()
+    {
         if *release_state != ReleaseState::Released {
             continue;
         }
 
+        let (tx, ty) = ghost_target(
+            attack_state,
+            transform.translation.x,
+            transform.translation.y,
+            tj_x,
+            tj_y,
+            tj_direction.0,
+            sean_pos.0,
+            sean_pos.1,
+            sean.is_some(),
+            julie.is_some(),
+            claflin.is_some(),
+            &board,
+        );
+
         if let Some((x, y)) = ghost_path.0.pop_front() {
-            ghost_transform.translation.x = x;
-            ghost_transform.translation.y = y;
+            transform.translation.x = x;
+            transform.translation.y = y;
+
+            // Recalculate at every cell centre so targeting stays responsive.
+            if utils::is_centered_horizontally(&transform, &board)
+                && utils::is_centered_vertically(&transform, &board)
+            {
+                ghost_path.0 = Path::to_coordinates(&transform, tx, ty, &board, ghost_speed.0);
+            }
         } else {
-            ghost_path.0 = Path::shortest_to_transform(
-                &ghost_transform,
-                tj_transform,
-                &board,
-                ghost_speed.0,
-                CollisionType::Approximate
-            );
+            ghost_path.0 = Path::to_coordinates(&transform, tx, ty, &board, ghost_speed.0);
         }
     }
 }
@@ -813,13 +895,16 @@ fn ghost_respawn_system(
         }
 
         if let Some((x, y)) = ghost_path.0.pop_front() {
-            let (target_x, target_y) = utils::get_ghost_spawn_coordinates(&board);
             transform.translation.x = x;
             transform.translation.y = y;
 
-            if transform.translation.x == target_x && transform.translation.y == target_y {
+            let (target_x, target_y) = utils::get_ghost_spawn_coordinates(&board);
+            let (target_i, target_j) = board.coordinates_to_indeces(target_x, target_y);
+            let (ghost_i, ghost_j) = board.coordinates_to_indeces(transform.translation.x, transform.translation.y);
+            if ghost_i == target_i && ghost_j == target_j {
                 *release_state = ReleaseState::Caged;
                 *attack_state = AttackState::Attacking;
+                ghost_path.0.clear();
             }
         }
         else {
@@ -836,19 +921,16 @@ fn ghost_respawn_system(
 }
 
 fn background_music_system(
-    mut background_music_timer: ResMut<misc::BackgroundMusicTimer>,
-    sound_materials: Res<misc::SoundMaterials>,
     mut commands: Commands,
-    time: Res<Time>
+    sound_materials: Res<misc::SoundMaterials>,
+    music_query: Query<(), With<misc::BackgroundMusic>>,
 ) {
-    let timer = &mut background_music_timer.0;
-    if timer.elapsed_secs() == 0. {
-        commands.spawn((AudioPlayer::new(sound_materials.background_sound.clone()), misc::BackgroundMusic));
-    }
-
-    timer.tick(time.delta());
-    if timer.finished() {
-        timer.reset();
+    if music_query.is_empty() {
+        commands.spawn((
+            AudioPlayer::new(sound_materials.background_sound.clone()),
+            PlaybackSettings::LOOP,
+            misc::BackgroundMusic,
+        ));
     }
 }
 
@@ -976,14 +1058,12 @@ fn reset_ghost_release_timer(
 }
 
 fn reset_background_music(
-    mut background_music_timer: ResMut<misc::BackgroundMusicTimer>,
     music_query: Query<Entity, With<misc::BackgroundMusic>>,
     mut commands: Commands,
 ) {
     for entity in music_query.iter() {
         commands.entity(entity).despawn();
     }
-    background_music_timer.0 = Timer::from_seconds(87., TimerMode::Once);
 }
 
 fn reset_end_message_text(

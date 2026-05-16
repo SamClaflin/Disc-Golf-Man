@@ -20,5 +20,4 @@ pub enum GameState {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum CollisionType {
     Approximate,
-    Exact
 }

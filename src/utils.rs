@@ -53,16 +53,9 @@ pub fn can_move_left(transform: &Transform, board: &Board, speed: f32) -> bool {
         && new_tile.unwrap() != BoardTile::GhostGate
 }
 
-pub fn did_collide(a_transform: &Transform, b_transform: &Transform, board: &Board, collision_type: CollisionType) -> bool {
-    match collision_type {
-        CollisionType::Approximate => {
-            a_transform.translation.x == b_transform.translation.x && (a_transform.translation.y - b_transform.translation.y).abs() <= board.cell_size()
-            || a_transform.translation.y == b_transform.translation.y && (a_transform.translation.x - b_transform.translation.x).abs() <= board.cell_size()
-        },
-        CollisionType::Exact => {
-            a_transform.translation.x == b_transform.translation.x && a_transform.translation.y == b_transform.translation.y
-        }
-    }
+pub fn did_collide(a_transform: &Transform, b_transform: &Transform, board: &Board, _collision_type: CollisionType) -> bool {
+    a_transform.translation.x == b_transform.translation.x && (a_transform.translation.y - b_transform.translation.y).abs() <= board.cell_size()
+    || a_transform.translation.y == b_transform.translation.y && (a_transform.translation.x - b_transform.translation.x).abs() <= board.cell_size()
 }
 
 pub fn get_ghost_spawn_coordinates(board: &Board) -> (f32, f32) {

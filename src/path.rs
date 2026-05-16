@@ -1,8 +1,6 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet, VecDeque};
 use bevy::prelude::*;
-use crate::board::Board;
-use crate::enums::{Direction, CollisionType};
-use crate::utils;
+use crate::board::{Board, BoardTile};
 
 pub struct Path(VecDeque<(f32, f32)>);
 
@@ -11,102 +9,163 @@ impl Path {
         Self(VecDeque::new())
     }
 
-    pub fn shortest_to_transform(initial_transform: &Transform, target_transform: &Transform, board: &Board, speed: f32, collision_type: CollisionType) -> Self {
-        fn shortest_to_transform_helper(
-            _path: &mut Path,
-            _initial_transform: &mut Transform,
-            _target_transform: &Transform,
-            _board: &Board,
-            _speed: f32,
-            _collision_type: CollisionType
-        ) {
-            if utils::did_collide(_initial_transform, _target_transform, _board, _collision_type) {
-                return;
-            }
+    fn ghost_walkable(tile: BoardTile) -> bool {
+        tile != BoardTile::Wall
+    }
 
-            let up_position = _board.get_coordinates(_initial_transform.translation.x, _initial_transform.translation.y, Direction::Up, _speed);
-            let right_position = _board.get_coordinates(_initial_transform.translation.x, _initial_transform.translation.y, Direction::Right, _speed);
-            let down_position = _board.get_coordinates(_initial_transform.translation.x, _initial_transform.translation.y, Direction::Down, _speed);
-            let left_position = _board.get_coordinates(_initial_transform.translation.x, _initial_transform.translation.y, Direction::Left, _speed);
+    fn snap(v: f32, offset: f32, cell: f32) -> f32 {
+        ((v - offset) / cell).round() * cell + offset
+    }
 
-            let mut available_directions: Vec<Direction> = Vec::new();
-            if utils::can_move_up(_initial_transform, _board, _speed) && !_path.0.contains(&up_position) {
-                available_directions.push(Direction::Up);
-            }
-            if utils::can_move_right(_initial_transform, _board, _speed) && !_path.0.contains(&right_position) {
-                available_directions.push(Direction::Right);
-            }
-            if utils::can_move_down(_initial_transform, _board, _speed) && !_path.0.contains(&down_position) {
-                available_directions.push(Direction::Down);
-            }
-            if utils::can_move_left(_initial_transform, _board, _speed) && !_path.0.contains(&left_position) {
-                available_directions.push(Direction::Left);
-            }
+    fn neighbors(i: usize, j: usize, w: usize, h: usize) -> [Option<(usize, usize)>; 4] {
+        [
+            if i > 0 { Some((i - 1, j)) } else { None },
+            if i + 1 < h { Some((i + 1, j)) } else { None },
+            Some((i, if j == 0 { w - 1 } else { j - 1 })),
+            Some((i, if j + 1 >= w { 0 } else { j + 1 })),
+        ]
+    }
 
-            let should_move_up = _initial_transform.translation.y < _target_transform.translation.y;
-            let should_move_right = _initial_transform.translation.x < _target_transform.translation.x;
-            let should_move_down = _initial_transform.translation.y > _target_transform.translation.y;
-            let should_move_left = _initial_transform.translation.x > _target_transform.translation.x;
-
-            let mut move_forward = |direction: Direction| {
-                match direction {
-                    Direction::Up => _initial_transform.translation.y = up_position.1,
-                    Direction::Right => _initial_transform.translation.x = right_position.0,
-                    Direction::Down => _initial_transform.translation.y = down_position.1,
-                    Direction::Left => _initial_transform.translation.x = left_position.0,
-                }
-
-                _path.push_back((_initial_transform.translation.x, _initial_transform.translation.y));
-                shortest_to_transform_helper(
-                    _path,
-                    _initial_transform,
-                    _target_transform,
-                    _board,
-                    _speed,
-                    _collision_type
-                );
-            };
-
-            if should_move_up && available_directions.contains(&Direction::Up) {
-                move_forward(Direction::Up)
-            } else if should_move_right && available_directions.contains(&Direction::Right) {
-                move_forward(Direction::Right)
-            } else if should_move_down && available_directions.contains(&Direction::Down) {
-                move_forward(Direction::Down)
-            } else if should_move_left && available_directions.contains(&Direction::Left) {
-                move_forward(Direction::Left)
-            } else {
-                if let Some(direction) = available_directions.pop() {
-                    move_forward(direction);
+    // BFS outward from (i, j) to find the nearest ghost-walkable tile.
+    fn nearest_walkable(i: usize, j: usize, board: &Board) -> (usize, usize) {
+        if board.try_get(i, j).map_or(false, Self::ghost_walkable) {
+            return (i, j);
+        }
+        let (w, h) = (board.width(), board.height());
+        let mut queue = VecDeque::new();
+        let mut visited = HashSet::new();
+        queue.push_back((i, j));
+        visited.insert((i, j));
+        while let Some((ci, cj)) = queue.pop_front() {
+            for (ni, nj) in Self::neighbors(ci, cj, w, h).into_iter().flatten() {
+                if visited.insert((ni, nj)) {
+                    if board.try_get(ni, nj).map_or(false, Self::ghost_walkable) {
+                        return (ni, nj);
+                    }
+                    queue.push_back((ni, nj));
                 }
             }
         }
+        (i, j)
+    }
 
-        let mut path = Self::new();
-        shortest_to_transform_helper(&mut path, &mut initial_transform.clone(), target_transform, board, speed, collision_type);
+    fn bfs(
+        start_i: usize,
+        start_j: usize,
+        end_i: usize,
+        end_j: usize,
+        board: &Board,
+    ) -> Vec<(usize, usize)> {
+        if start_i == end_i && start_j == end_j {
+            return vec![];
+        }
+        let (w, h) = (board.width(), board.height());
+        let mut queue = VecDeque::new();
+        let mut came_from: HashMap<(usize, usize), (usize, usize)> = HashMap::new();
+        queue.push_back((start_i, start_j));
+        came_from.insert((start_i, start_j), (start_i, start_j));
+        'outer: while let Some((i, j)) = queue.pop_front() {
+            for (ni, nj) in Self::neighbors(i, j, w, h).into_iter().flatten() {
+                if !came_from.contains_key(&(ni, nj))
+                    && board.try_get(ni, nj).map_or(false, Self::ghost_walkable)
+                {
+                    came_from.insert((ni, nj), (i, j));
+                    if ni == end_i && nj == end_j {
+                        break 'outer;
+                    }
+                    queue.push_back((ni, nj));
+                }
+            }
+        }
+        if !came_from.contains_key(&(end_i, end_j)) {
+            return vec![];
+        }
+        let mut path = Vec::new();
+        let mut cur = (end_i, end_j);
+        while cur != (start_i, start_j) {
+            path.push(cur);
+            cur = came_from[&cur];
+        }
+        path.reverse();
         path
     }
 
-    pub fn shortest_to_ghost_spawn(initial_transform: &Transform, board: &Board, speed: f32) -> Self {
-        let (target_x, target_y) = utils::get_ghost_spawn_coordinates(board);
-        let (_, temp_y) = board.indeces_to_coordinates(11, 0);
-        let mut path = Self::shortest_to_transform(
-            initial_transform,
-            &Transform {
-                translation: Vec3::new(target_x, temp_y, initial_transform.translation.z),
-                ..Default::default()
-            },
-            board,
-            speed,
-            CollisionType::Exact
-        );
+    /// Build a pixel-level path from `start_transform` to the world coordinate `(target_x, target_y)`.
+    ///
+    /// If the target lands in a wall the nearest walkable tile is used instead.
+    /// If the ghost isn't on a cell centre, an initial centering segment is prepended.
+    pub fn to_coordinates(
+        start_transform: &Transform,
+        target_x: f32,
+        target_y: f32,
+        board: &Board,
+        speed: f32,
+    ) -> Self {
+        let offset = board.offset();
+        let cell = board.cell_size();
 
-        while path.peek_back().unwrap().0 == target_x && path.peek_back().unwrap().1 > target_y {
-            let (x, y) = *path.peek_back().unwrap();
-            path.push_back((x, y - speed));
+        let snap_x = Self::snap(start_transform.translation.x, offset, cell);
+        let snap_y = Self::snap(start_transform.translation.y, offset, cell);
+        let (start_i, start_j) = board.coordinates_to_indeces(snap_x, snap_y);
+
+        let clamped_tx = target_x.clamp(offset, (board.width() as f32 - 1.0) * cell + offset);
+        let clamped_ty = target_y.clamp(offset, (board.height() as f32 - 1.0) * cell + offset);
+        let (raw_ti, raw_tj) = board.coordinates_to_indeces(clamped_tx, clamped_ty);
+        let (end_i, end_j) = Self::nearest_walkable(raw_ti, raw_tj, board);
+
+        let mut result = Self::new();
+
+        // Prepend centering steps if the ghost isn't already on a cell centre.
+        let act_x = start_transform.translation.x;
+        let act_y = start_transform.translation.y;
+        if (act_x - snap_x).abs() > 0.5 || (act_y - snap_y).abs() > 0.5 {
+            let dist = (act_x - snap_x).abs() + (act_y - snap_y).abs();
+            let steps = (dist / speed).round().max(1.0) as usize;
+            let dx = (snap_x - act_x) / steps as f32;
+            let dy = (snap_y - act_y) / steps as f32;
+            for s in 1..=steps {
+                result.push_back((act_x + dx * s as f32, act_y + dy * s as f32));
+            }
         }
 
-        path
+        if start_i == end_i && start_j == end_j {
+            return result;
+        }
+
+        let cell_path = Self::bfs(start_i, start_j, end_i, end_j, board);
+        if cell_path.is_empty() {
+            return result;
+        }
+
+        let mut cur_x = snap_x;
+        let mut cur_y = snap_y;
+
+        for (ni, nj) in cell_path {
+            let (dest_x, dest_y) = board.indeces_to_coordinates(ni, nj);
+            let (cur_i, cur_j) = board.coordinates_to_indeces(cur_x, cur_y);
+            // Detect horizontal tunnel wrap: same row, column gap > 1.
+            let is_wrap = cur_i == ni && cur_j.abs_diff(nj) > 1;
+
+            if is_wrap {
+                result.push_back((dest_x, dest_y));
+            } else {
+                let steps = (cell / speed).round() as usize;
+                let dx = (dest_x - cur_x) / steps as f32;
+                let dy = (dest_y - cur_y) / steps as f32;
+                for s in 1..=steps {
+                    result.push_back((cur_x + dx * s as f32, cur_y + dy * s as f32));
+                }
+            }
+            cur_x = dest_x;
+            cur_y = dest_y;
+        }
+
+        result
+    }
+
+    pub fn shortest_to_ghost_spawn(initial_transform: &Transform, board: &Board, speed: f32) -> Self {
+        let (target_x, target_y) = crate::utils::get_ghost_spawn_coordinates(board);
+        Self::to_coordinates(initial_transform, target_x, target_y, board, speed)
     }
 
     pub fn push_back(&mut self, position: (f32, f32)) {
@@ -121,7 +180,5 @@ impl Path {
         self.0.clear();
     }
 
-    pub fn peek_back(&self) -> Option<&(f32, f32)> {
-        self.0.back()
-    }
+
 }
